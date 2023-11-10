@@ -1,0 +1,17 @@
+{
+  "camera_params" : {
+    "min_angle" : -0.2617993877991494,
+    "max_angle" : 0.2617993877991494,
+    "min_visual_distance" : 0.5,
+    "max_visual_distance" : 5
+  },
+
+  "rf_params" : {
+    "map_granularity" : 0.5,
+    "angle_delta" : 0.017453292519943295,
+    "dist_delta": 0.1
+  },
+
+  "init_alpha" : 1,
+  "init_beta" : 1
+}
