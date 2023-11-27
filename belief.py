@@ -6,29 +6,23 @@ class ObjTpBel():
         self.map_bounds = map_bounds
         self.configs = configs
         
-        init_alpha = self.configs['init_alpha']
-        init_beta = self.configs['init_beta']
-        
         x_dim = int((map_bounds.x_max - map_bounds.x_min) / self.configs['rf_params']['map_granularity'])
         y_dim = int((map_bounds.y_max - map_bounds.y_min) / self.configs['rf_params']['map_granularity'])
 
         print(f'Belief Created with (xdim, y_dim) = ({x_dim}, {y_dim})')
 
-        self.alpha = np.ones((x_dim, y_dim)) * init_alpha
-        self.beta = np.ones((x_dim, y_dim)) * init_alpha
-
-        # Try sampling p rather than argmax
-        self.p = np.random.beta(self.alpha, self.beta)
+        # Start with uniform prior
+        self.p = 0.5 * np.ones((x_dim, y_dim))
 
         print('Belief shape: ', np.shape(self.p))
 
-    def update(self, voxel_x, voxel_y, k_inc, n_inc):
-        # Update Beta Dist Params
+    def update(self, voxel_x, voxel_y, obs, eps=1e-6):
+        # Discretize voxels and map to belief ranges
         map_g = self.configs['rf_params']['map_granularity']
         voxel_x = int((voxel_x - self.map_bounds.x_min)/map_g)
         voxel_y = int((voxel_y - self.map_bounds.y_min)/map_g)
 
-        # Check taht in range
+        # Check that in range
         if voxel_x not in range(0, int((self.map_bounds.x_max -
             self.map_bounds.x_min)/map_g)):
             return
@@ -37,15 +31,18 @@ class ObjTpBel():
             self.map_bounds.y_min)/ map_g)):
             return
 
-        print(f'Updating at Index = ({voxel_x}, {voxel_y}), with increments k = {k_inc}, n = {n_inc}')
+        print(f'Updating at Index = ({voxel_x}, {voxel_y}), with likelihood = {obs}')
 
-        self.alpha[voxel_x, voxel_y] += k_inc
-        self.beta[voxel_x, voxel_y] += (n_inc - k_inc)
-        
-        # Try sampling p rather than argmax
-        alpha = self.alpha[voxel_x, voxel_y]
-        beta = self.beta[voxel_x, voxel_y]
-        self.p[voxel_x, voxel_y] = np.random.beta(alpha, beta)
+        # Update Belief using Binary Bayes Filter
+        p = self.p[voxel_x, voxel_y]
+
+        log_p = np.log(p/(1-p))
+
+        inv_sensor_model = log((obs-eps)/(1-obs+eps))
+
+        new_log_p = log_p + inv_sensor_model
+
+        self.p[voxel_x, voxel_y] = 1 - (1/(1+np.exp(new_log_p)))
 
 class Belief():
     def __init__(self, robot_init_loc, obj_tp_list, map_bounds, priors=None):

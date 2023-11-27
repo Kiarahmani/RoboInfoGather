@@ -228,7 +228,7 @@ class MCTS_Planner():
             
             depth += 1
 
-        return self.reward_func.eval(node)
+        return self.reward_func.eval(self.root, node)
 
     def rollout_policy(self, node):
         if self.rollout_policy_tp == "Random":

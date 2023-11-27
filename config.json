@@ -10,8 +10,5 @@
     "map_granularity" : 0.5,
     "angle_delta" : 0.017453292519943295,
     "dist_delta": 0.1
-  },
-
-  "init_alpha" : 1,
-  "init_beta" : 1
+  }
 }

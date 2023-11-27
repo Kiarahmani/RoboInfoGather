@@ -68,8 +68,7 @@ class BelMaintainer:
                     obj_tp_found = vox.obj_tp,
                     voxel_x = vox.x,
                     voxel_y = vox.y,
-                    k_inc = vox.k_inc,
-                    n_inc = vox.n_inc)
+                    obs = obs)
 
         # Update Robot Loc in belief
         loc_goal = GetCurrentLocationGoal()

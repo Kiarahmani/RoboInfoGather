@@ -21,12 +21,11 @@ from MCTS_planner import Loc
 from threading import Lock
 
 class PushVoxel:
-    def __init__(self, obj_tp, x, y, k_inc, n_inc):
+    def __init__(self, obj_tp, x, y, obs):
         self.obj_tp = obj_tp
         self.x = x
         self.y = y
-        self.k_inc = k_inc
-        self.n_inc = n_inc
+        self.obs = obs
 
 class BelUpdater:
     def __init__(self):
@@ -142,8 +141,7 @@ class BelUpdater:
                     obj_tp = None,
                     x = x,
                     y = y,
-                    k_inc = 0,
-                    n_inc = 1))
+                    obs = 0))
 
             # Return updated
             return vox_list
@@ -155,8 +153,7 @@ class BelUpdater:
                         obj_tp=objs['o_id']['obj_tp'], 
                         x=objs['o_id']['x'],
                         y=objs['o_id']['y'],
-                        k_inc=1, #TODO: This may be modified later
-                        n_inc=1)
+                        obs=1)
                     )
 
             return ret_voxes

@@ -9,7 +9,7 @@ class RewardFunction_Sparse():
         self.x_offset = x_offset
         self.y_offset = y_offset
 
-    def eval(self, node):
+    def eval(self, root, node):
         x = int(node.loc.x - self.x_offset)
         y = int(node.loc.y - self.y_offset)
         if x in range(0, self.reward_map.shape[0]) and \
@@ -93,7 +93,7 @@ class RewardFunction_S_Entropy():
 
         return fov
 
-    def eval(self, node):
+    def eval(self, root, node, gamma=0.2):
         # If not taking an observation action return 0
         if node.inbound_act != Action.OBS:
             return 0
@@ -109,6 +109,15 @@ class RewardFunction_S_Entropy():
             reward += p * np.log(p) + (1-p)*np.log(1-p)
 
         reward *= -1
+
+        # Add distance to get observation
+        root_x = root.loc.x
+        root_y = root.loc.y
+
+        node_x = node.loc.x
+        node_y = node.loc.y
+
+        dist = np.sqrt((node_x-root_x)**2 + (node_y-root_y)**2)
 
         return reward
 
