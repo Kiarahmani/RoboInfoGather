@@ -3,7 +3,7 @@ from reward_func import *
 from map_utils import *
 
 class POMDP():
-    def __init__(self, robot_init_loc, obj_tp_list, trav_map, configs, priors=None):
+    def __init__(self, robot_init_loc, obj_tp_list, trav_map, configs):
         self.prior_beliefs = []
         assert False # Above ??
         self.loc = robot_init_loc
@@ -11,21 +11,23 @@ class POMDP():
         self.configs = configs
 
         # Calculate originial map params so that we can pass to reward and belief classes
-        trav_map_original_size = trav_map.trav_map_original_size
-        trav_map_original_resolution = trav_map.map_default_resolution
+        self.trav_map_original_size = trav_map.trav_map_original_size
+        self.trav_map_original_resolution = trav_map.map_default_resolution
 
         self.bel = {}
         self.reward_funcs = {}
-        camaera_params = configs["camera_params"]
-        rf_params = configs["rf_params"]
-        for obj_tp, num, thresh in obj_tp_list:
+        self.camaera_params = configs["camera_params"]
+        self.rf_params = configs["rf_params"]
+        for obj_tp, num, thresh, relevant_features, priors in obj_tp_list:
             # Get map params based off of current params and obj_tp
-            map_params = get_map_params(obj_tp, trav_map_original_size, trav_map_original_resolution)
+            self.map_params = get_map_params(obj_tp, self.trav_map_original_size, self.trav_map_original_resolution)
 
             if priors == None:
-                self.bel[obj_tp] = ObjTpBel(num, threshold, map_params, self.configs)
+                self.bel[obj_tp] = ObjTpBel(num, threshold, self.map_params, self.configs, relevant_features)
+            else:
+                self.bel[obj_tp] = priors
 
-            self.reward_funcs[obj_tp] = RewardFunc(map_params, camaera_params, rf_params)
+            self.reward_funcs[obj_tp] = RewardFunc(map_params, self.camaera_params, self.rf_params)
 
     def eval_reward(self, obstacle_map, root, node):
         reward = 0

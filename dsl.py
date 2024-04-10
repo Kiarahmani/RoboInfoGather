@@ -9,11 +9,11 @@ class Prog:
 
         return res
 
-    def execute(self):
+    def execute(self, symbolic_info):
         results = []
 
         for exp in expressions:
-            results.append(exp.execute())
+            results.append(exp.execute(symbolic_info))
 
         return results 
 
@@ -29,9 +29,10 @@ class Map:
     def pretty_str(self):
         return f"map({self.obj_tp}, {self.map_feature}, {self.query.pretty_str()})"
 
-    def execute(self):
+    def execute(self, symbolic_info):
         # Query must have been executed in real world to get symbolic results
-        assert self.query.result != None
+        self.query.result == None:
+            self.query.execute(symbolic_info)
 
         if self.result == {}:
             for obj_inst in self.query.result[self.obj_tp]:
@@ -127,9 +128,10 @@ class GetNth:
     def pretty_str(self):
         return f"getNth({self.list.pretty_str()}, {self.index})"
 
-    def execute(self):
+    def execute(self, symbolic_info):
         # List must have been evaluated
-        assert self.list != {}
+        if self.list.result == {}:
+            self.list.execute(symbolic_info)
 
         if self.result == None:
             key = list(self.list.keys())[self.index]
@@ -149,9 +151,10 @@ class Count:
     def pretty_str(self):
         return f"count({self.query.pretty_str()}, {self.obj_tp})"
 
-    def execute(self):
+    def execute(self, symbolic_info):
         # Query must have been executed in the real world
-        assert self.query.result != None
+        if self.query.result == None:
+            self.query.execute(symbolic_info)
 
         if self.result == None:
             self.result = len(self.query.result[self.obj_tp])
@@ -170,33 +173,34 @@ class Aggregator:
     def pretty_str(self):
         return f"{self.agg_tp}({self.list.pretty_str})"
 
-    def execute(self):
+    def execute(self, symbolic_info):
         # List must have been completed
-        assert self.list != {}
+        if self.list.result == {}:
+            self.list.execute(symbolic_info)
 
         if self.result == None:
             if self.agg_tp == "sum":
                 sum = 0
                 
-                for key in self.list:
-                    sum += self.list[key]
+                for key in self.list.result:
+                    sum += self.list.result[key]
 
                 self.result = sum
 
             elif self.agg_tp == "avg":
                 avg = 0
 
-                for key in self.list:
-                    avg += self.list[key]
+                for key in self.list.result:
+                    avg += self.list.result[key]
 
-                self.result = avg/len(self.list)
+                self.result = avg/len(self.list.result)
 
             elif self.agg_tp == "min":
                 min = -1
 
-                for key in self.list:
-                    if self.list[key] < min or min == -1:
-                        min = self.list[key]
+                for key in self.list.result:
+                    if self.list.result[key] < min or min == -1:
+                        min = self.list.result[key]
 
                 self.result = min
 
@@ -204,8 +208,8 @@ class Aggregator:
                 max = -1
 
                 for key in self.list:
-                    if self.list[key] > max or max == -1:
-                        max = self.list[key]
+                    if self.list.result[key] > max or max == -1:
+                        max = self.list.result[key]
 
                 self.result = max
 
@@ -213,10 +217,11 @@ class Aggregator:
 
 
 class Query:
-    def __init__(self, obj_tp, where_clause, limit=-1):
+    def __init__(self, obj_tp, where_clause, limit=-1, threshold=0.9):
         self.obj_tp = obj_tp
         self.where_clause = where_clause
         self.limit = limit
+        self.threshold = threshold
 
         # Result of executing Query
         self.result = None
@@ -224,13 +229,20 @@ class Query:
     def pretty_str(self):
         res = f'find ({self.obj_tp}) where ({where_clause.pretty_str()})'
 
+        assert False # This won't work, need query return to be a dict
         if self.limit > 0:
             res += f" [limit {self.limit}]"
 
         return res
 
-    def set_result(self, result):
-        self.result = result
+    def execute(self, symbolic_info):
+        if self.result == None:
+            self.result = self.where_clause.filter(symbolic_info)
+
+            if len(self.result) > self.limit:
+                self.result = self.result[0:self.limit]
+
+        return self.result
 
 
 class WhereClause:
@@ -288,3 +300,135 @@ class WhereClause:
 
         elif self.where_tp == "true":
             return "true"
+
+    def filter(self, symbolic_info):
+        ret_symb_info = symbolic_info
+        if self.where_tp == "feature_enum":
+            temp_list = []
+            for obj_dict in ret_symb_info[self.obj_tp]:
+                if self.enum_feature in obj_dict and obj_dict[self.enum_feature] == self.enum_param:
+                    temp_list.append(obj_dict)
+
+            ret_symb_info[self.obj_tp] = temp_list
+
+        elif self.where_tp == "feature_scalar":
+            if self.scalar_comparator == "Lt":
+                temp_list = []
+                for obj_dict in ret_symb_info[self.obj_tp]:
+                    if self.scalar_feature in obj_dict and obj_dict[self.scalar_feature] < self.scalar_param:
+                        temp_list.append(obj_dict)
+
+                ret_symb_info[self.obj_tp] = temp_list
+
+            elif self.scalar_comparator == "Leq":
+                temp_list = []
+                for obj_dict in ret_symb_info[self.obj_tp]:
+                    if self.scalar_feature in obj_dict and obj_dict[self.scalar_feature] <= self.scalar_param:
+                        temp_list.append(obj_dict)
+
+                ret_symb_info[self.obj_tp] = temp_list
+                
+            elif self.scalar_comparator == "Eq":
+                temp_list = []
+                for obj_dict in ret_symb_info[self.obj_tp]:
+                    if self.scalar_feature in obj_dict and obj_dict[self.scalar_feature] == self.scalar_param:
+                        temp_list.append(obj_dict)
+
+                ret_symb_info[self.obj_tp] = temp_list
+                
+            elif self.scalar_comparator == "Geq":
+                temp_list = []
+                for obj_dict in ret_symb_info[self.obj_tp]:
+                    if self.scalar_feature in obj_dict and obj_dict[self.scalar_feature] >= self.scalar_param:
+                        temp_list.append(obj_dict)
+
+                ret_symb_info[self.obj_tp] = temp_list
+                
+            elif self.scalar_comparator == "Gt":
+                temp_list = []
+                for obj_dict in ret_symb_info[self.obj_tp]:
+                    if self.scalar_feature in obj_dict and obj_dict[self.scalar_feature] > self.scalar_param:
+                        temp_list.append(obj_dict)
+
+                ret_symb_info[self.obj_tp] = temp_list
+                
+
+        elif self.where_tp == "max":
+            temp_obj = None
+            max_val = -1
+            for obj_dict in ret_symb_info[self.obj_tp]:
+                if self.scalar_feature in obj_dict and (obj_dict[self.scalar_feature] > max_val or max_val == -1):
+                    temp_obj = obj_dict
+                    max_val = obj_dict[self.scalar_feature]
+
+            ret_symb_info[self.obj_tp] = temp_obj
+
+        elif self.where_tp == "min":
+            temp_obj = None
+            min_val = -1
+            for obj_dict in ret_symb_info[self.obj_tp]:
+                if self.scalar_feature in obj_dict and (obj_dict[self.scalar_feature] > min_val or min_val == -1):
+                    temp_obj = obj_dict
+                    min_val = obj_dict[self.scalar_feature]
+
+            ret_symb_info[self.obj_tp] = temp_obj
+
+        elif self.where_tp == "spatial_rel":
+            assert False # What to do here?
+            return f"{self.spatial_relation}({self.obj_tp}, {self.obj_tp2})"
+
+        elif self.where_tp == "and":
+            ret_symb_info = self.sub_where_clause[0].filter(ret_symb_info)
+            ret_symb_info = self.sub_where_clause[1].filter(ret_symb_info)
+
+        elif self.where_tp == "or":
+            left_symb_info = self.sub_where_clause[0].filter(ret_symb_info)
+            right_symb_info = self.sub_where_clause[1].filter(ret_symb_info)
+
+            # Combine
+            temp_ret_info = {}
+            for obj_tp in ret_symb_info:
+                if obj_tp in left_symb_info or obj_tp i right_symb_info:
+                    temp_list = []
+                    for obj_dict in ret_symb_info[obj_tp]:
+                        inleft = False
+                        inright = False
+
+                        for l_obj_dict in left_symb_info[obj_tp]:
+                            if obj_dict['id'] == l_obj_dict['id']:
+                                inleft = True
+                                break
+
+                        for r_obj_dict in right_symb_info[obj_tp]:
+                            if obj_dict['id'] == r_obj_dict['id']:
+                                inright = True
+                                break
+
+                        if inleft or inright:
+                            temp_list.append(obj_dict)
+                    
+                    temp_ret_info[obj_tp] = temp_list
+
+            ret_symb_info = temp_ret_info
+
+        elif self.where_tp == "not":
+            return f"!({self.sub_where_clause[0].pretty_str()})"
+
+            true_ret_info = self.sub_where_clause[0].filter(ret_symb_info)
+
+            # Compare to ret symb info
+            # Remove version that are in true_ret_info
+            keep_obj_list = []
+            for obj_dict in ret_symb_info[self.obj_tp]:
+                in_true = False
+
+                for t_obj_dict in true_ret_info[self.obj_tp]:
+                    if obj_dict['id'] == t_obj_dict['id']:
+                        in_true = True
+
+                if not in_true:
+                    keep_obj_list.append(obj_dict)
+
+            ret_symb_info[self.obj_tp] = keep_obj_list
+
+        return ret_symb_info

@@ -47,7 +47,8 @@ def main(nl):
     query_results = []
     for query in prog:
         assert False # Will this be a loop??
-        pomdp = gen_pomdp_from_query(query)
+        pos, ori = env.robots[0].get_position_orientation()
+        pomdp = gen_pomdp_from_query(query, pos, ori)
 
         symbolic_info = pomdp_exec_loop(env, pomdp, config)
 

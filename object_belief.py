@@ -4,7 +4,7 @@ import json
 from map_utils import *
 
 class ObjTpBel():
-    def __init__(self, num, threshold, map_params, configs, relevant_features):
+    def __init__(self, num, threshold, map_params, configs, relevant_features=None):
         self.num = num # Num objects to be found, If None -> unbounded
         self.threshold = threshold # Existence threshold
         self.map_params = map_params
@@ -27,6 +27,9 @@ class ObjTpBel():
         self.p = np.stack(temp_p, axis=2)
 
         print('Belief shape: ', np.shape(self.p))
+
+        # For copying later if we get new features to evaluate
+        self.backup_p = np.copy(p)
 
         # Belief over features
         self.feature_bels = {}
