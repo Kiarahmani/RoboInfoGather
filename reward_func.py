@@ -1,27 +1,11 @@
 import numpy as np
 import json
 from MCTS_planner import Action
+from map_utils import *
 
-class RewardFunction_Sparse():
-    def __init__(self, reward_map, x_offset, y_offset):
-        self.reward_map = reward_map
-
-        self.x_offset = x_offset
-        self.y_offset = y_offset
-
-    def eval(self, root, node):
-        x = int(node.loc.x - self.x_offset)
-        y = int(node.loc.y - self.y_offset)
-        if x in range(0, self.reward_map.shape[0]) and \
-          y in range(0, self.reward_map.shape[1]):
-              return self.reward_map[x, y]
-
-        return 0.0
-
-class RewardFunction_S_Entropy():
-    def __init__(self, obj_belief, obstacle_map, camera_params, rf_params):
-        self.belief = obj_belief
-        self.obstacle_map = obstacle_map
+class RewardFunc():
+    def __init__(self, map_params, camera_params, rf_params):
+        self.map_params = map_params
         self.camera_params = camera_params
         self.rf_params = rf_params
 
@@ -41,10 +25,9 @@ class RewardFunction_S_Entropy():
         real_x = current_loc.x + delta_x
         real_y = current_loc.y + delta_y
 
-        # Round to map granularity and return
-        map_granularity = self.rf_params['map_granularity']
-        rounded_x = np.round(real_x / map_granularity) * map_granularity
-        rounded_y = np.round(real_y / map_granularity) * map_granularity
+        # Get Map xy
+        xy = [real_x, real_y]
+        mxy = world_to_map(xy, self.map_params['res'], self.map_params['size'])
 
         return rounded_x, rounded_y
 
@@ -72,15 +55,15 @@ class RewardFunction_S_Entropy():
                     continue
 
                 # Check that x,y are within map bounds
-                x_max = int((7-5)/0.5) #TODO: Add proper bounds based on config later
-                y_max = int((73-70)/0.5)
-                if int(x) not in range(0, x_max) or int(y) not in range(0, y_max):
+                x_max = self.map_params['size']
+                y_max = self.map_params['size']
+                if x not in range(0, x_max) or y not in range(0, y_max):
                     break
 
                 # Can't see through obstacles so break
                 # TODO: Think about how to represent with different map
                 # granularities once LIDAR setup
-                if self.obstacle_map[int(x), int(y)]:
+                if self.obstacle_map[x, y]:
                     break
 
                 fov.append((x,y))
@@ -93,7 +76,7 @@ class RewardFunction_S_Entropy():
 
         return fov
 
-    def eval(self, root, node, gamma=0.2):
+    def eval(self, belief, obstacle_map, root, node):
         # If not taking an observation action return 0
         if node.inbound_act != Action.OBS:
             return 0
@@ -105,8 +88,12 @@ class RewardFunction_S_Entropy():
         for (x,y) in locs:
             # TODO: Think about how to represent with different map granularities
             # once LIDAR setup is done
-            p = self.belief.p[int(x), int(y)]
-            reward += p * np.log(p) + (1-p)*np.log(1-p)
+            assert False # Above
+            z_dim = int(self.config['rf_params']['map_height'] / self.map_params['res'])
+
+            for z in range(z_dim):
+                p = belief[x, y, z]
+                reward += p * np.log(p) + (1-p)*np.log(1-p)
 
         reward *= -1
 
@@ -120,25 +107,3 @@ class RewardFunction_S_Entropy():
         dist = np.sqrt((node_x-root_x)**2 + (node_y-root_y)**2)
 
         return reward
-
-def generate_reward_func(belief, ob_tp, props, func_tp='S_Entropy', exist_thresh=0.6):
-    if func_tp == 'Sparse':
-        ones = np.ones_like(belief.bel[ob_tp].p)
-        zeros = np.zeros_like(belief.bel[ob_tp].p)
-        reward_map = np.where(belief.bel[ob_tp].p > exist_thresh, ones, zeros)
-
-        x_offset = belief.map_bounds.x_min
-        y_offset = belief.map_bounds.y_min
-
-        return RewardFunction_Sparse(reward_map, x_offset, y_offset)
-    elif func_tp == 'S_Entropy':
-        obj_belief = belief.bel[ob_tp]
-        obstacle_map = obj_belief.p * 0 # TEMP UNTIL LIDAR OBSTACLE DETECTION
-
-        with open('config.json', 'r') as f:
-            config = json.load(f)
-
-        camera_params = config['camera_params']
-        rf_params = config['rf_params']
-
-        return RewardFunction_S_Entropy(obj_belief, obstacle_map, camera_params, rf_params)

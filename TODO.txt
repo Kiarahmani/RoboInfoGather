@@ -1,0 +1,19 @@
+Work on low-level planner
+
+Add LIDAR and obstacle reasoning for path planning
+
+Implememnt obstacle and belief "localization"
+
+Add LLM reasoning for grid discretization
+
+Add VLM obstruction reasoning
+    - Reasoning about likelihood of an object being in FOV but obstructed
+    - Reasoning about feasibility. E.g. no floating objects
+
+    - GPT-V
+
+Implement DSL 
+
+Implement Query to POMDP
+
+Close loop with NL to query synth

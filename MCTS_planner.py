@@ -3,6 +3,8 @@ import json
 import time
 import random
 
+import numpy as np
+
 import actionlib
 
 from enum import Enum
@@ -15,7 +17,7 @@ class Loc():
         self.y = y
         self.theta = theta
 
-class Action(Enum):
+"""class Action(Enum):
     M_LEFT = 1
     M_RIGHT = 2
     M_DOWN = 3
@@ -33,10 +35,22 @@ class Action(Enum):
     L_W = 15
     L_NW = 16
     OBS = 17
+"""
+
+class Action(Enum):
+    M_FOWARD = 1
+    M_BACKWARD = 2
+    R_CCW = 3
+    R_CW = 4
+    OBS = 5
 
 class MCTS_Tree_Node():
     def __init__(self, loc, map_bounds, obstacle_map, num_prev_obs, max_obs,
             map_g, parent=None, children=[], inbound_act=None, terminal=False):
+
+
+        assert False # Need to consider how to check collisions -- use trav map
+        
         self.loc = loc
         self.map_bounds = map_bounds
 
@@ -130,7 +144,7 @@ class MCTS_Tree_Node():
         return True
 
     def get_loc(self, act):
-        if act == Action.M_LEFT:
+        """if act == Action.M_LEFT:
             return Loc(self.loc.x - 1, self.loc.y, self.loc.theta)
         elif act == Action.M_RIGHT:
             return Loc(self.loc.x + 1, self.loc.y, self.loc.theta)
@@ -163,6 +177,42 @@ class MCTS_Tree_Node():
         elif act == Action.L_NW:
             return Loc(self.loc.x, self.loc.y, math.radians(315))
         elif act == Action.OBS:
+            return Loc(self.loc.x, self.loc.y, self.loc.theta)"""
+
+        # TODO: Think about this?
+        assert False
+
+        # Estimate location based on actions
+        # Rotations are ~15 degrees
+        # Motition is 0.5m
+
+        step_deg = 15
+        step_len = 0.5
+
+        # CCW Rotation
+        if act == Action.R_CCW:
+            return Loc(self.loc.x, self.loc.y, self.loc.theta + math.radians(step_deg))
+        
+        # CW Rotation
+        if act == Action.R_CW:
+            return Loc(self.loc.x, self.loc.y, self.loc.theta - math.radians(step_deg))
+
+        # Move Forward
+        if act == Action.M_FORWARD: 
+            new_x = self.loc.x + np.cos(self.loc.theta) * step_len
+            new_y = self.loc.y + np.sin(self.loc.theta) * step_len
+            # NEEDS TO BE BASED ON ANGLE
+            return Loc(new_x, new_y, self.loc.theta)
+
+        # Move Backward
+        if act == Action.M_BACKWARD:
+            new_x = self.loc.x - np.cos(self.loc.theta) * step_len
+            new_y = self.loc.y - np.sin(self.loc.theta) * step_len
+            # NEEDS TO BE BASED ON ANGLE
+            return Loc(new_x, new_y, self.loc.theta)
+
+        #Observation
+        if act == Action.OBS:
             return Loc(self.loc.x, self.loc.y, self.loc.theta)
 
 
@@ -172,15 +222,14 @@ class MCTS_Tree_Node():
 
 class MCTS_Planner():
     def __init__(self, 
-            belief,
-            reward_func,
+            pomdp,
             max_time,
             max_obs,
             epsilon=1e-2,
             rollout_policy="Random",
             max_rollout_depth=300):
 
-        root_loc = Loc(int(belief.loc[0]), int(belief.loc[1]), belief.loc[2])
+        root_loc = Loc(pomdp.loc[0], pomdp.loc[1], pomdp.loc[2])
 
         with open('config.json', 'r') as f:
             self.config = json.load(f)
@@ -190,8 +239,7 @@ class MCTS_Planner():
         self.root = MCTS_Tree_Node(root_loc, belief.map_bounds, obstacle_map, 0,
                 max_obs, map_g=self.config['rf_params']['map_granularity'])
 
-        self.belief = belief
-        self.reward_func = reward_func
+        self.pomdp = pomdp
 
         self.max_time = max_time
         self.epsilon = epsilon
@@ -228,7 +276,12 @@ class MCTS_Planner():
             
             depth += 1
 
-        return self.reward_func.eval(self.root, node)
+        # Calculate reward for all object types
+        reward = 0
+        for obj_tp in self.pomdp.reward_funcs.keys():
+            reward += self.pomdp.reward_funcs[obj_tp].eval(self.belief, self.obstacle_map, self.root, node)
+
+        return reward
 
     def rollout_policy(self, node):
         if self.rollout_policy_tp == "Random":
@@ -303,61 +356,3 @@ class MCTS_Planner():
                 best_child = child
 
         return best_child
-
-def planner_exec(belief, reward_func, goto_client=None):
-    # Need global to check terminal
-    global global_reward_func
-    global_reward_func = reward_func
-    
-    # Instantiate new planner
-    # Can't reuse old tree since info is probably not relevant anymore????
-    planner = MCTS_Planner(belief, reward_func, max_time=5.0, max_obs=1)
-
-    best_next_node = planner.search()
-
-    # Get terminal view node
-    path = []
-    path.append(best_next_node)
-    while len(best_next_node.children) > 0:
-        best_next_node = planner.best_child(best_next_node)
-        path.append(best_next_node)
-
-    # Find particular node in path that we want to use
-    # TODO: Update this to search all observations if max_obs is greater than 1
-    view_node = path[-1]
-
-    # Execute path to get to next node if low overall map confidence
-    # Execute path to get to some node under best_next_node (longer path) if high overall confidence
-        # With this method we can serach longer horizons with MCTS
-        # However when to replan? Say we are approaching location and we can already tell that the object isn't there?
-            # Perhaps while updating the belief we keep evaluating that location on the reward function? If it falls below 
-            # some threshold replan?
-
-    # If we modify such that no nodes are terminal, MCTS is more likely to search in direciton where more objects
-    # are likely to be found. I.e. only consider rollout depth, not termination of nodes. Collect rewards along the way?
-        # Is this behaviour automatic in UCB selection policy?
-
-    print("Plan Found, View Node: ", view_node.loc.x, view_node.loc.y,
-            math.degrees(view_node.loc.theta), ' Locs Considered: ', len(path))
-
-    print("Inbound Action: ", view_node.inbound_act)
-    print("Parent Children Num: ", len(view_node.parent.children))
-
-    # Set up Goto Client if None
-    goto_client = actionlib.SimpleActionClient("/go_to_server", GoToAction)
-    goto_client.wait_for_server()
-
-    # Exec goto
-    next_best_view = f'{view_node.loc.x}, {view_node.loc.y},{view_node.loc.theta}'
-    res = goto_client.wait_for_server()
-    goto_goal = GoToGoal(location=next_best_view)
-    goto_client.send_goal(goto_goal)
-    goto_client.wait_for_result()
-
-    # Replan loop (recursive)
-    # TODO: Figure out success conditions
-    success = False
-    if not success and belief.confidence < 0.95: # TODO: Get actual conf thresh
-        return 'Replan'
-
-    return 'Not Found'

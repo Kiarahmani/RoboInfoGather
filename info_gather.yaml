@@ -1,0 +1,83 @@
+env:
+  initial_pos_z_offset: 0.1
+
+render:
+  viewer_width: 1280
+  viewer_height: 720
+
+scene:
+  type: InteractiveTraversableScene
+  scene_model: Rs_int #Change this line and next three to modify scene
+  scene_file: .\mod_scenes\Rs_int_DONE.json
+  trav_map_path: .\omnigibson\data\og_dataset\scenes\Rs_int\layout\
+  floor: 0 # By default
+  trav_map_resolution: 0.01 # Change this to modify map resolution
+  trav_map_erosion: 0
+  trav_map_with_objects: false
+  build_graph: true
+  num_waypoints: 1
+  waypoint_resolution: 0.2
+  load_object_categories: null
+  not_load_object_categories: null # Can remove object categories here e.g. ["door"]
+  load_room_types: null
+  load_room_instances: null
+  seg_map_resolution: 0.1
+  scene_source: OG
+  include_robots: true
+
+robots:
+  - type: Turtlebot
+    obs_modalities: [scan, rgb, depth]
+    scale: 1.0
+    self_collision: false
+    action_normalize: true
+    action_type: continuous
+    controller_config:
+      base:
+        name: DifferentialDriveController
+      
+objects: [] # Add additional objects here?
+
+task:
+  type: DummyTask
+  #robot_idn: 0
+  #floor: 0
+  #initial_pos: null
+  #initial_quat: null
+  #goal_pos: null
+  #goal_tolerance: 0.36    # turtlebot bodywidth
+  #goal_in_polar: false
+  #path_range: [1.0, 10.0]
+  #visualize_goal: true
+  #visualize_path: false
+  #n_vis_waypoints: 25
+  #reward_type: geodesic
+  #termination_config:
+  #  max_collisions: 500
+  #  max_steps: 500
+  #  fall_height: 0.03
+  #reward_config:
+  #  r_potential: 1.0
+  #  r_collision: 0.1
+  #  r_pointgoal: 10.0
+
+
+camera_params:
+    min_angle : -0.2617993877991494
+    max_angle : 0.2617993877991494
+    min_visual_distance : 0.5
+    max_visual_distance : 5
+
+rf_params:
+    map_granularity_not_used : 0.5
+    map_height : 2
+    angle_delta : 0.017453292519943295
+    dist_delta: 0.1
+
+bel_params:
+  akld_hist_len: 100
+  akld_stop: 0.01
+
+planner_params:
+  max_time: 5.0
+  max_observations: 1
