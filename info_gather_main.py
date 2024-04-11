@@ -1,6 +1,8 @@
 from pomdp_exec import *
 from groundingdino.util.inference import load_model
 from program_utils import *
+from pomdp import *
+from obstacle_map import *
 
 def main(nl):
     """
@@ -43,6 +45,11 @@ def main(nl):
     # Set up models
     dino_model = load_model(CONFIG_PATH, WEIGHTS_PATH)
 
+
+    # Setup obstacle map
+    resolution = env.robots[0]._sensors['robot0:scan_link_Lidar_sensor'].occupancy_grid_resolution
+    obstacle_map = ObstacleMap(resolution)
+
     # Execute each query
     query_results = []
     for query in prog:
@@ -50,9 +57,9 @@ def main(nl):
         pos, ori = env.robots[0].get_position_orientation()
         pomdp = gen_pomdp_from_query(query, pos, ori)
 
-        symbolic_info = pomdp_exec_loop(env, pomdp, config)
+        symbolic_info = pomdp_exec_loop(env, pomdp, obstacle_map, config)
 
-        query_results.append(eval_query(query, symbolic_info))
+        query_results.append(query.execute(symbolic_info))
 
     # Always close the environment at the end
     env.close()

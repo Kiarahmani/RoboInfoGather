@@ -17,14 +17,15 @@ def get_map_params(obj_tp, map_original_size, map_original_resolution):
     pre_prompt = f.read()
     prompt = pre_prompt + str(obj_tp) + "\nResolution: "
 
-    response = openai.Completion.create(
-            engine='text-davinci-003',
-            temperature = 0,
-            max_tokens = 200,
-            prompt=prompt
+    client = OpenAI(api_key=openai_api_key)
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": f"{prompt}"}],
+        stream=False,
+        temperature=temp
     )
 
-    map_resolution = float(response.choices[0].text.strip())
+    map_resolution = float(sketch = response.choices[0].message.content)
 
     map_size = map_size = int(
                     map_original_size * map_original_resolution / map_resolution

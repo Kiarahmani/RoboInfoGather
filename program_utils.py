@@ -130,8 +130,3 @@ def gen_pomdp_from_query(query, pos, ori, trav_map, configs, prev_pomdp=None):
                         prev_pomdp.bel[obj].feature_bels[feature] = np.copy(prev_pomdp.bel[obj].backup_p)
 
         return prev_pomdp
-
-
-def eval_query(component, symbolic_info):
-    # Set the symbolic info in the query then execute
-    return component.execute(symbolic_info)

@@ -223,6 +223,7 @@ class MCTS_Tree_Node():
 class MCTS_Planner():
     def __init__(self, 
             pomdp,
+            obstacle_map,
             max_time,
             max_obs,
             epsilon=1e-2,
@@ -234,12 +235,12 @@ class MCTS_Planner():
         with open('config.json', 'r') as f:
             self.config = json.load(f)
 
-        # TODO Add Belief to Obstacle map once done with LIDAR implementation
-        obstacle_map = belief.bel[list(belief.bel.keys())[0]].p * 0
         self.root = MCTS_Tree_Node(root_loc, belief.map_bounds, obstacle_map, 0,
                 max_obs, map_g=self.config['rf_params']['map_granularity'])
 
         self.pomdp = pomdp
+
+        self.obstacle_map = obstacle_map
 
         self.max_time = max_time
         self.epsilon = epsilon

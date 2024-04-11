@@ -97,7 +97,7 @@ def low_level_planner_exec(way_point, pos, ori, config):
 
     return action, reached_way_point
 
-def pomdp_exec_loop(env, pomdp, config):
+def pomdp_exec_loop(env, pomdp, obstacle_map, config):
     """
     Main loop for pomdp_execution
     """
@@ -136,3 +136,9 @@ def pomdp_exec_loop(env, pomdp, config):
                 # Get predictions for all voxels based on observations
                 vox_preds = get_vox_preds(camera_pos, camera_ori, pomdp.bel[obj_tp], obj_tp, state['robot0'], dino_model, feature)
                 pomdp.bel[obj_tp].update(vox_preds, feature)
+
+        # Update Obstacle map 
+        lidar_sensor = env.robots[0]._sensors['robot0:scan_link_Lidar_sensor']
+        grid_preds = lidar_sensor.get_local_occupancy_grid(state['robot0']['robot0:scan_link_Lidar_sensor_scan'])
+
+        obstacle_map.update(grid_preds)
