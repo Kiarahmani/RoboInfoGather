@@ -31,7 +31,7 @@ class Map:
 
     def execute(self, symbolic_info):
         # Query must have been executed in real world to get symbolic results
-        self.query.result == None:
+        if self.query.result == None:
             self.query.execute(symbolic_info)
 
         if self.result == {}:
@@ -135,7 +135,7 @@ class GetNth:
 
         if self.result == None:
             key = list(self.list.keys())[self.index]
-            self.result self.list[key]
+            self.result = self.list[key]
 
         return self.result
 
@@ -227,10 +227,10 @@ class Query:
         self.result = None
 
     def pretty_str(self):
-        res = f'find ({self.obj_tp}) where ({where_clause.pretty_str()})'
+        res = f'find ({self.obj_tp}) where ({self.where_clause.pretty_str()})'
 
-        assert False # This won't work, need query return to be a dict
         if self.limit > 0:
+            assert False # This won't work, need query return to be a dict
             res += f" [limit {self.limit}]"
 
         return res
@@ -247,8 +247,8 @@ class Query:
 
 class WhereClause:
     def __init__(self, where_tp, obj_tp, sub_where_clause=None, obj_tp2=None, 
-        scalar_feature=None, scalar_param=None, scalar_comparator=None, enum_feature=None, enum_param=None
-        spatial_relation=None)
+        scalar_feature=None, scalar_param=None, scalar_comparator=None, enum_feature=None, enum_param=None,
+        spatial_relation=None):
 
         self.where_tp = where_tp
         self.obj_tp = obj_tp
@@ -281,10 +281,10 @@ class WhereClause:
             return f"{self.scalar_feature}({self.obj_tp}) {scalar_comp} {self.scalar_param}"
 
         elif self.where_tp == "max":
-            return f"max({self.feature_scalar}({self.obj_tp}))"
+            return f"max({self.scalar_feature}({self.obj_tp}))"
 
         elif self.where_tp == "min":
-            return f"min({self.feature_scalar}({self.obj_tp}))"
+            return f"min({self.scalar_feature}({self.obj_tp}))"
 
         elif self.where_tp == "spatial_rel":
             return f"{self.spatial_relation}({self.obj_tp}, {self.obj_tp2})"
@@ -388,7 +388,7 @@ class WhereClause:
             # Combine
             temp_ret_info = {}
             for obj_tp in ret_symb_info:
-                if obj_tp in left_symb_info or obj_tp i right_symb_info:
+                if obj_tp in left_symb_info or obj_tp in right_symb_info:
                     temp_list = []
                     for obj_dict in ret_symb_info[obj_tp]:
                         inleft = False
